@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Calculations — Subtab Clear + Conversion Labels</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:#f3f4f6 }
+
+    /* Brand helpers */
+    .bg-brand { background:#13c636ff }
+    .hover\:bg-brand-dark:hover { background:#0f9e2b }
+    .ring-brand:focus { --tw-ring-color:#13c636ff }
+    .border-brand:focus { border-color:#13c636ff }
+
+    /* Active tab styles */
+    .tab-button[aria-selected="true"], .sub-tab-button[aria-selected="true"] {
+      color:#13c636ff; background:#e6faedff; border-bottom-width:2px; border-color:#13c636ff
+    }
+
+    /* Result color presets */
+    .result-positive { background:#ecfdf5; border-color:#bbf7d0 }
+    .result-negative { background:#fef2f2; border-color:#fecaca }
+    .result-neutral  { background:#c0e8fdff; border-color:#c0e8fdff }
+
+    /* Sticky action bar inside card */
+    .sticky-actions { position:sticky; bottom:0; background:#fff; padding-top:1rem }
+
+    /* Utility for field errors */
+    .field-error { border-color:#ef4444 !important }
+    .hint { font-size:0.8rem }
+  </style>
+</head>
+<body class="min-h-screen p-4 flex items-center justify-center">
+  <main class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-2xl" aria-labelledby="app-title">
+    <h1 id="app-title" class="text-3xl font-bold text-center text-gray-800 mb-2">Technical Calculations</h1>
+    <p class="text-center text-gray-500 mb-6">Choose a tab and enter your values. Your inputs are saved automatically.</p>
+
+    <!-- Top-level tabs -->
+    <div role="tablist" aria-label="Calculation Types" class="flex overflow-auto border-b border-gray-200 gap-1 mb-4">
+      <button role="tab" id="tab-pl" data-tab="pl" class="tab-button flex-1 whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 border-transparent" aria-selected="true">P&L</button>
+      <button role="tab" id="tab-market-range" data-tab="market-range" class="tab-button flex-1 whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 border-transparent" aria-selected="false">Market range — limit order</button>
+      <button role="tab" id="tab-long-compensations" data-tab="long-compensations" class="tab-button flex-1 whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 border-transparent" aria-selected="false">Compensations Long</button>
+      <button role="tab" id="tab-short-compensations" data-tab="short-compensations" class="tab-button flex-1 whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 border-transparent" aria-selected="false">Compensations Short</button>
+      <button role="tab" id="tab-units" data-tab="units" class="tab-button flex-1 whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 border-transparent" aria-selected="false">Units</button>
+    </div>
+
+    <!-- P&L -->
+    <section id="pl" role="tabpanel" aria-labelledby="tab-pl">
+      <div role="tablist" aria-label="P&L Types" class="flex border-b border-gray-200 mb-4">
+        <button role="tab" id="sub-pre-march" data-sub="pre-march" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" aria-selected="true">USD & CFDs P&L</button>
+        <button role="tab" id="sub-post-march" data-sub="post-march" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" aria-selected="false">Non-USD Real P&L</button>
+      </div>
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="sellPrice">Sell Price</label>
+          <input type="number" id="sellPrice" class="mt-1 p-3 w-full rounded-md border border-gray-300 border-brand ring-brand" inputmode="decimal" />
+          <p id="err-sellPrice" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="buyPrice">Buy Price</label>
+          <input type="number" id="buyPrice" class="mt-1 p-3 w-full rounded-md border border-gray-300 border-brand ring-brand" inputmode="decimal" />
+          <p id="err-buyPrice" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="plUnits">Number of Units</label>
+          <input type="number" id="plUnits" class="mt-1 p-3 w-full rounded-md border border-gray-300 border-brand ring-brand" inputmode="decimal" />
+          <p id="err-plUnits" class="text-red-600 hint hidden">Enter a valid number &gt; 0.</p>
+        </div>
+        <div id="post-march-extra" class="grid gap-4 md:grid-cols-2 hidden">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="conversionStart">Conversion (USD = 1) at Start</label>
+            <input type="number" id="conversionStart" class="mt-1 p-3 w-full rounded-md border border-gray-300 border-brand ring-brand" inputmode="decimal" />
+            <p id="err-conversionStart" class="text-red-600 hint hidden">Enter a valid number &gt; 0.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="conversionEnd">Conversion (USD = 1) at End</label>
+            <input type="number" id="conversionEnd" class="mt-1 p-3 w-full rounded-md border border-gray-300 border-brand ring-brand" inputmode="decimal" />
+            <p id="err-conversionEnd" class="text-red-600 hint hidden">Enter a valid number (or leave blank for 1).</p>
+          </div>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="pl-precision">Decimal Precision</label>
+            <select id="pl-precision" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+              <option value="0">0</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="reset-pl" class="ml-auto px-4 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Market Range -->
+    <section id="market-range" role="tabpanel" aria-labelledby="tab-market-range" hidden>
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="assetType">Asset Type</label>
+          <select id="assetType" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+            <option value="stocks">Stocks (1%)</option>
+            <option value="crypto">Crypto (3%)</option>
+            <option value="etfs">ETFs / Commodities / Indices (1%)</option>
+            <option value="currencies">Currencies (0.2%)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="marketRate">Market Rate at Time of Order</label>
+          <input type="number" id="marketRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-marketRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="targetRate">Target Rate</label>
+          <input type="number" id="targetRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-targetRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="rangePercentage">Range Percentage (%)</label>
+          <input type="number" id="rangePercentage" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-rangePercentage" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="mr-precision">Decimal Precision</label>
+            <select id="mr-precision" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+              <option value="0">0</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="reset-mr" class="ml-auto px-4 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Long compensations -->
+    <section id="long-compensations" role="tabpanel" aria-labelledby="tab-long-compensations" hidden>
+      <div role="tablist" aria-label="Long Compensation Rate" class="flex border-b border-gray-200 mb-4">
+        <button role="tab" id="long-open" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" data-sub="long-open" aria-selected="true">Open Rate</button>
+        <button role="tab" id="long-close" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" data-sub="long-close" aria-selected="false">Close Rate</button>
+      </div>
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="rateReceived">Rate Received</label>
+          <input type="number" id="rateReceived" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-rateReceived" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="correctRate">Correct Rate</label>
+          <input type="number" id="correctRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-correctRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="compUnits">Number of Units</label>
+          <input type="number" id="compUnits" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-compUnits" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="conversionRate">Conversion (USD = 1)</label>
+          <input type="number" id="conversionRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-conversionRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="lc-precision">Decimal Precision</label>
+            <select id="lc-precision" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+              <option value="0">0</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="reset-lc" class="ml-auto px-4 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Short compensations -->
+    <section id="short-compensations" role="tabpanel" aria-labelledby="tab-short-compensations" hidden>
+      <div role="tablist" aria-label="Short Compensation Rate" class="flex border-b border-gray-200 mb-4">
+        <button role="tab" id="short-open" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" data-sub="short-open" aria-selected="true">Open Rate</button>
+        <button role="tab" id="short-close" class="sub-tab-button flex-1 py-2 px-3 text-xs font-medium border-b-2 border-transparent" data-sub="short-close" aria-selected="false">Close Rate</button>
+      </div>
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="short-rateReceived">Rate Received</label>
+          <input type="number" id="short-rateReceived" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-short-rateReceived" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="short-correctRate">Correct Rate</label>
+          <input type="number" id="short-correctRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-short-correctRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="short-compUnits">Number of Units</label>
+          <input type="number" id="short-compUnits" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-short-compUnits" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="short-conversionRate">Conversion (USD = 1)</label>
+          <input type="number" id="short-conversionRate" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-short-conversionRate" class="text-red-600 hint hidden">Enter a valid number.</p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="sc-precision">Decimal Precision</label>
+            <select id="sc-precision" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+              <option value="0">0</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="reset-sc" class="ml-auto px-4 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Units -->
+    <section id="units" role="tabpanel" aria-labelledby="tab-units" hidden>
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="amount">Amount</label>
+          <input type="number" id="amount" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-amount" class="text-red-600 hint hidden">Enter a valid number &gt; 0.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="price">Price</label>
+          <input type="number" id="price" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-price" class="text-red-600 hint hidden">Enter a valid number &gt; 0.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700" for="conversion">Conversion (USD = 1)</label>
+          <input type="number" id="conversion" class="mt-1 p-3 w-full rounded-md border border-gray-300" inputmode="decimal" />
+          <p id="err-conversion" class="text-red-600 hint hidden">Enter a valid number &gt; 0.</p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="units-precision">Decimal Precision</label>
+            <select id="units-precision" class="mt-1 p-3 w-full rounded-md border border-gray-300">
+              <option value="0">0</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="reset-units" class="ml-auto px-4 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sticky action bar -->
+    <div class="sticky-actions mt-6">
+      <div class="flex gap-3">
+        <button id="calculate" class="flex-1 py-3 px-4 rounded-md text-white bg-brand hover:bg-brand-dark focus:outline-none focus:ring-2 ring-brand" type="button">Calculate</button>
+        <button id="copy-result" class="px-4 py-3 rounded-md border text-sm text-gray-700 hover:bg-gray-50" type="button" aria-label="Copy result to clipboard">Copy Result</button>
+      </div>
+    </div>
+
+    <!-- Result area -->
+    <section id="result-wrap" class="mt-6 hidden">
+      <div id="result-box" class="p-5 rounded-xl border transition-all duration-300 result-neutral">
+        <p class="text-lg font-medium text-blue-700">Result</p>
+        <div id="result-text" class="mt-1 text-2xl font-bold text-blue-900">—</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    // ======= Constants & State =======
+    const assetRanges = { stocks:1, crypto:3, etfs:1, currencies:0.2 };
+
+    const els = /** @type {const} */({
+      // panels
+      panels: {
+        pl: document.getElementById('pl'),
+        market: document.getElementById('market-range'),
+        long: document.getElementById('long-compensations'),
+        short: document.getElementById('short-compensations'),
+        units: document.getElementById('units')
+      },
+      // tabs
+      tabs: Array.from(document.querySelectorAll('[role=tab][id^=tab-]')),
+      // P&L sub
+      plSubTabs: Array.from(document.querySelectorAll('#pl [role=tab][id^=sub-]')),
+      postExtra: document.getElementById('post-march-extra'),
+      // Inputs common
+      resultWrap: document.getElementById('result-wrap'),
+      resultBox: document.getElementById('result-box'),
+      resultText: document.getElementById('result-text'),
+      calcBtn: document.getElementById('calculate'),
+      copyBtn: document.getElementById('copy-result'),
+    });
+
+    let currentTab = 'pl';
+    let currentPL = 'pre-march';
+    let currentLong = 'long-open';
+    let currentShort = 'short-open';
+
+    // ======= Helpers =======
+    function clearResult(){
+      els.resultText.textContent = '—';
+      els.resultBox.classList.remove('result-positive','result-negative','result-neutral');
+      els.resultBox.classList.add('result-neutral');
+      els.resultWrap.classList.add('hidden');
+    }
+
+    function setResultStyle(kind) {
+      els.resultWrap.classList.remove('hidden');
+      els.resultBox.classList.remove('result-positive','result-negative','result-neutral');
+      if (kind === 'positive') els.resultBox.classList.add('result-positive');
+      else if (kind === 'negative') els.resultBox.classList.add('result-negative');
+      else els.resultBox.classList.add('result-neutral');
+    }
+
+    function fmt(num, precision = 2) {
+      if (!isFinite(num)) return '—';
+      return Number(num).toFixed(precision);
+    }
+
+    function showError(id, show) {
+      const input = document.getElementById(id);
+      const err = document.getElementById(`err-${id}`);
+      if (!input || !err) return;
+      if (show) { input.classList.add('field-error'); err.classList.remove('hidden'); }
+      else { input.classList.remove('field-error'); err.classList.add('hidden'); }
+    }
+
+    function persist(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const key = `tc:${currentTab}:${id}`;
+      el.addEventListener('input', () => localStorage.setItem(key, el.value));
+      const saved = localStorage.getItem(key);
+      if (saved !== null) el.value = saved;
+    }
+
+    function resetGroup(ids) {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = ''; localStorage.removeItem(`tc:${currentTab}:${id}`); showError(id, false); }
+      });
+      clearResult();
+    }
+
+    function switchTabs(targetId) {
+      currentTab = targetId;
+      // tab button aria
+      els.tabs.forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.tab === targetId)));
+      // panels
+      Object.entries(els.panels).forEach(([id, node]) => node.hidden = id !== mapPanelKey(targetId));
+      clearResult();
+    }
+
+    function mapPanelKey(tabId){
+      return tabId === 'pl' ? 'pl'
+        : tabId === 'market-range' ? 'market'
+        : tabId === 'long-compensations' ? 'long'
+        : tabId === 'short-compensations' ? 'short'
+        : 'units';
+    }
+
+    function precisionOf(selectId){
+      const el = document.getElementById(selectId);
+      const v = el ? parseInt(el.value,10) : 2;
+      return Number.isFinite(v) ? v : 2;
+    }
+
+    // ======= Calculations =======
+    function calcPL(){
+      const sell = +document.getElementById('sellPrice').value;
+      const buy  = +document.getElementById('buyPrice').value;
+      const units = +document.getElementById('plUnits').value;
+      const p = precisionOf('pl-precision');
+
+      let bad = false;
+      if (isNaN(sell)) { showError('sellPrice', true); bad = true; } else showError('sellPrice', false);
+      if (isNaN(buy)) { showError('buyPrice', true); bad = true; } else showError('buyPrice', false);
+      if (!isFinite(units) || units <= 0) { showError('plUnits', true); bad = true; } else showError('plUnits', false);
+
+      let result = 0;
+      if (currentPL === 'pre-march') {
+        const convEndRaw = document.getElementById('conversionEnd').value;
+        const convEnd = convEndRaw === '' ? NaN : +convEndRaw; // optional; defaults to 1 if empty
+        if (!isNaN(convEnd) && !(convEnd > 0)) { showError('conversionEnd', true); bad = true; } else showError('conversionEnd', false);
+        const finalConv = isNaN(convEnd) ? 1 : convEnd;
+        result = (sell - buy) * units * finalConv;
+      } else {
+        const cs = +document.getElementById('conversionStart').value;
+        const ce = +document.getElementById('conversionEnd').value;
+        if (!(cs > 0)) { showError('conversionStart', true); bad = true; } else showError('conversionStart', false);
+        if (!(ce > 0)) { showError('conversionEnd', true); bad = true; } else showError('conversionEnd', false);
+        result = (sell * units * ce) - (buy * units * cs);
+      }
+
+      if (bad) { setResultStyle('neutral'); els.resultText.textContent = 'Fix highlighted fields and try again.'; return; }
+
+      els.resultText.textContent = `Profit/Loss: $${fmt(result, p)}`;
+      setResultStyle(result > 0 ? 'positive' : result < 0 ? 'negative' : 'neutral');
+    }
+
+    function calcMarketRange(){
+      const market = +document.getElementById('marketRate').value;
+      const target = +document.getElementById('targetRate').value;
+      const percent = +document.getElementById('rangePercentage').value;
+      const p = precisionOf('mr-precision');
+
+      let bad = false;
+      if (isNaN(market)) { showError('marketRate', true); bad = true; } else showError('marketRate', false);
+      if (isNaN(target)) { showError('targetRate', true); bad = true; } else showError('targetRate', false);
+      if (isNaN(percent)) { showError('rangePercentage', true); bad = true; } else showError('rangePercentage', false);
+      if (bad) { setResultStyle('neutral'); els.resultText.textContent = 'Fix highlighted fields and try again.'; return; }
+
+      const delta = market * (percent / 100);
+      let limit;
+      let note;
+      if (market > target) { limit = target - delta; note = 'Downward range (market > target).'; }
+      else if (market < target) { limit = target + delta; note = 'Upward range (market < target).'; }
+      else { limit = target; note = 'Zero range (market = target).'; }
+
+      els.resultText.innerHTML = `Calculated Limit: $${fmt(limit, p)}<br><span class="text-sm font-normal text-gray-600">${note}</span>`;
+      setResultStyle('neutral');
+    }
+
+    function calcComp(kind){
+      const isLong = kind === 'long';
+      const prefix = isLong ? '' : 'short-';
+      const rr = +document.getElementById(`${prefix}rateReceived`).value;
+      const cr = +document.getElementById(`${prefix}correctRate`).value;
+      const cu = +document.getElementById(`${prefix}compUnits`).value;
+      const cv = +document.getElementById(`${prefix}conversionRate`).value;
+      const p = precisionOf(isLong ? 'lc-precision' : 'sc-precision');
+
+      let bad = false;
+      if (isNaN(rr) || rr <= 0) { showError(`${prefix}rateReceived`, true); bad = true; } else showError(`${prefix}rateReceived`, false);
+      if (isNaN(cr) || cr <= 0) { showError(`${prefix}correctRate`, true); bad = true; } else showError(`${prefix}correctRate`, false);
+      if (isNaN(cu) || cu <= 0) { showError(`${prefix}compUnits`, true); bad = true; } else showError(`${prefix}compUnits`, false);
+      if (isNaN(cv) || cv <= 0) { showError(`${prefix}conversionRate`, true); bad = true; } else showError(`${prefix}conversionRate`, false);
+      if (bad) { setResultStyle('neutral'); els.resultText.textContent = 'Fix highlighted fields and try again.'; return; }
+
+      let res = 0;
+      if (isLong) {
+        res = (currentLong === 'long-open') ? (rr - cr) * cu * cv : (cr - rr) * cu * cv;
+      } else {
+        res = (currentShort === 'short-open') ? (cr - rr) * cu * cv : (rr - cr) * cu * cv;
+      }
+      els.resultText.textContent = `Compensation: $${fmt(res, p)}`;
+      setResultStyle(res > 0 ? 'positive' : res < 0 ? 'negative' : 'neutral');
+    }
+
+    function calcUnits(){
+      const amount = +document.getElementById('amount').value;
+      const price = +document.getElementById('price').value;
+      const conv = +document.getElementById('conversion').value;
+      const p = precisionOf('units-precision');
+
+      let bad = false;
+      if (!(amount > 0)) { showError('amount', true); bad = true; } else showError('amount', false);
+      if (!(price > 0)) { showError('price', true); bad = true; } else showError('price', false);
+      if (!(conv > 0)) { showError('conversion', true); bad = true; } else showError('conversion', false);
+      if (bad) { setResultStyle('neutral'); els.resultText.textContent = 'Fix highlighted fields and try again.'; return; }
+
+      const units = amount / price / conv;
+      els.resultText.textContent = `Units: ${fmt(units, p)}`;
+      setResultStyle('neutral');
+    }
+
+    // ======= Event Wiring =======
+    // Keyboard nav for tabs
+    function wireRovingTabs(nodeList, onSelect){
+      nodeList.forEach((btn, i) => {
+        btn.addEventListener('click', () => onSelect(btn));
+        btn.addEventListener('keydown', (e) => {
+          const dir = (e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowLeft') ? -1 : 0;
+          if (dir !== 0) { e.preventDefault(); const next = nodeList[(i + dir + nodeList.length) % nodeList.length]; next.focus(); }
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(btn); }
+        });
+      });
+    }
+
+    // Top-level tabs
+    wireRovingTabs(els.tabs, (btn) => {
+      switchTabs(btn.dataset.tab);
+      if (currentTab === 'market-range') {
+        document.getElementById('assetType').dispatchEvent(new Event('change')); // ensure default percent
+      }
+    });
+
+    // P&L sub-tabs (clear result on switch)
+    wireRovingTabs(els.plSubTabs, (btn) => {
+      currentPL = btn.dataset.sub;
+      els.plSubTabs.forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+      els.postExtra.classList.toggle('hidden', currentPL !== 'post-march');
+      clearResult();
+    });
+
+    // Long/Short comp sub-tabs (clear result on switch)
+    wireRovingTabs(Array.from(document.querySelectorAll('#long-compensations [data-sub]')), (btn) => {
+      currentLong = btn.dataset.sub; // 'long-open' | 'long-close'
+      Array.from(document.querySelectorAll('#long-compensations [data-sub]')).forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+      clearResult();
+    });
+    wireRovingTabs(Array.from(document.querySelectorAll('#short-compensations [data-sub]')), (btn) => {
+      currentShort = btn.dataset.sub; // 'short-open' | 'short-close'
+      Array.from(document.querySelectorAll('#short-compensations [data-sub]')).forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+      clearResult();
+    });
+
+    // Default range on load + persistence wiring
+    const persistIds = ['sellPrice','buyPrice','plUnits','conversionStart','conversionEnd','marketRate','targetRate','rangePercentage','rateReceived','correctRate','compUnits','conversionRate','short-rateReceived','short-correctRate','short-compUnits','short-conversionRate','amount','price','conversion'];
+    persistIds.forEach(persist);
+
+    // Asset type change updates rangePercentage
+    const assetSelect = document.getElementById('assetType');
+    const rangePct = document.getElementById('rangePercentage');
+    assetSelect.addEventListener('change', () => { rangePct.value = assetRanges[assetSelect.value]; localStorage.setItem(`tc:${currentTab}:rangePercentage`, rangePct.value); });
+    // initialize once
+    if (!rangePct.value) rangePct.value = assetRanges[assetSelect.value];
+
+    // Calculate button
+    els.calcBtn.addEventListener('click', () => {
+      if (currentTab === 'pl') return calcPL();
+      if (currentTab === 'market-range') return calcMarketRange();
+      if (currentTab === 'long-compensations') return calcComp('long');
+      if (currentTab === 'short-compensations') return calcComp('short');
+      if (currentTab === 'units') return calcUnits();
+    });
+
+    // Copy result
+    els.copyBtn.addEventListener('click', async () => {
+      const txt = els.resultText.textContent || els.resultText.innerText || '';
+      try { await navigator.clipboard.writeText(txt.trim()); els.copyBtn.textContent = 'Copied!'; setTimeout(() => els.copyBtn.textContent = 'Copy Result', 1200); } catch { /* no-op */ }
+    });
+
+    // Reset buttons per section
+    document.getElementById('reset-pl').addEventListener('click', () => resetGroup(['sellPrice','buyPrice','plUnits','conversionStart','conversionEnd']));
+    document.getElementById('reset-mr').addEventListener('click', () => resetGroup(['marketRate','targetRate','rangePercentage']));
+    document.getElementById('reset-lc').addEventListener('click', () => resetGroup(['rateReceived','correctRate','compUnits','conversionRate']));
+    document.getElementById('reset-sc').addEventListener('click', () => resetGroup(['short-rateReceived','short-correctRate','short-compUnits','short-conversionRate']));
+    document.getElementById('reset-units').addEventListener('click', () => resetGroup(['amount','price','conversion']));
+  </script>
+</body>
+</html>
